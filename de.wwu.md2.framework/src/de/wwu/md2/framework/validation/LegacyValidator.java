@@ -494,20 +494,6 @@ public class LegacyValidator extends AbstractMD2JavaValidator {
 		}
 	}
 	
-	public static final String FILTERMULTIPLIYITY = "filtermultipliyity";
-	
-	/**
-	 * Avoid the assignment of 'all' filters to single-instance content providers. 
-	 * @param contentProvider
-	 */
-	@Check
-	public void checkFilterMultiplicity(ContentProvider contentProvider) {
-		if(!contentProvider.getType().isMany() && contentProvider.isFilter() && contentProvider.getFilterType().equals(FilterType.ALL)) {
-			acceptError("The filter type 'all' cannot be assigned to content providers that only return a single " +
-				"instance. Change parameter to 'first'.", contentProvider, MD2Package.eINSTANCE.getContentProvider_FilterType(), -1, FILTERMULTIPLIYITY);
-		}
-	}
-	
 	
 	/////////////////////////////////////////////////////////
 	/// Model layer

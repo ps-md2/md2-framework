@@ -21,7 +21,8 @@ import de.wwu.md2.framework.mD2.WorkflowStep
 import org.eclipse.xtext.validation.Check
 import org.eclipse.xtext.validation.EValidatorRegistrar
 
-import static extension de.wwu.md2.framework.validation.TypeResolver.*
+import static extension de.wwu.md2.framework.validation.TypeResolver.*import de.wwu.md2.framework.mD2.ContentProvider
+import de.wwu.md2.framework.mD2.FilterType
 
 /**
  * Valaidators for all controller elements of MD2.
@@ -250,6 +251,24 @@ class ControllerValidator extends AbstractMD2JavaValidator {
 		if (stepIndex == workflow.workflowSteps.size - 1) {
 			val error = '''No subsequent step! Cannot define 'proceed' operation on last workflow step.'''
 			acceptError(error, next, null, -1, null);
+		}
+	}
+	
+	/////////////////////////////////////////////////////////
+	/// Workflow Validators
+	/////////////////////////////////////////////////////////
+	
+	public static final String FILTERMULTIPLICITY = "filtermultiplicity";
+	
+	/**
+	 * Avoid the assignment of 'all' filters to single-instance content providers. 
+	 * @param contentProvider
+	 */
+	@Check
+	def checkFilterMultiplicity(ContentProvider contentProvider) {
+		if(!contentProvider.getType().isMany() && contentProvider.isFilter() && contentProvider.getFilterType().equals(FilterType.ALL)) {
+			acceptError("The filter type 'all' cannot be assigned to content providers that only return a single " +
+				"instance. Change parameter to 'first'.", contentProvider, MD2Package.eINSTANCE.getContentProvider_FilterType(), -1, FILTERMULTIPLICITY);
 		}
 	}
 	
