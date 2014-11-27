@@ -43,7 +43,7 @@ public class ModelProvider {
 	
 	//********Validator*****//
 	
-	public static final String FILTER_MULTIPLIZITY_C = "dsl/controller/contentProvider/validator/FilterMultiplizity.md2";
+	public static final String FILTER_MULTIPLICITY_C = "dsl/controller/contentProvider/validator/FilterMultiplicity.md2";
 	
 	/**
 	 * Load the model from file

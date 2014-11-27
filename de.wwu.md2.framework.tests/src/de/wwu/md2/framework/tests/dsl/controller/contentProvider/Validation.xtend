@@ -14,8 +14,8 @@ import static extension de.wwu.md2.framework.tests.utils.ModelProvider.*
 
 import org.junit.Test
 import org.eclipse.xtext.junit4.validation.ValidationTestHelper
-import de.wwu.md2.framework.validation.LegacyValidator
 import de.wwu.md2.framework.mD2.MD2Package
+import de.wwu.md2.framework.validation.ControllerValidator
 
 @InjectWith(typeof(MD2InjectorProvider))
 @RunWith(typeof(XtextRunner))
@@ -35,8 +35,8 @@ class Validation {
 	}
 	
 	@Test
-	def testFilterMultiplizityValidator(){
-		var controllerModel = FILTER_MULTIPLIZITY_C.load.parse(rs);
-		controllerModel.assertError(MD2Package::eINSTANCE.contentProvider,LegacyValidator::FILTERMULTIPLIYITY);		
+	def testFilterMultiplicityValidator(){
+		var controllerModel = FILTER_MULTIPLICITY_C.load.parse(rs);
+		controllerModel.assertError(MD2Package::eINSTANCE.contentProvider,ControllerValidator::FILTERMULTIPLICITY);		
 	} 
 }
