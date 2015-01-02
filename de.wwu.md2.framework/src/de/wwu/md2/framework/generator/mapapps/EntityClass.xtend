@@ -85,7 +85,7 @@ class EntityClass {
 			ReferencedType: {
 				val element = type.element
 				switch element {
-					Entity: '''null'''
+					Entity: '''this._typeFactory.create("«element.name.toFirstUpper»", null)'''
 					Enum: {
 						val defaultValue = type.params.filter(AttrEnumDefault).head
 						'''this._typeFactory.create("«element.name.toFirstUpper»", "«IF defaultValue != null»VALUE«element.enumBody.elements.indexOf(defaultValue.value)»«ELSE»VALUE0«ENDIF»")'''
