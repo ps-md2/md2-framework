@@ -1361,7 +1361,7 @@ ProcessChainGoToSpec:
 /////////////////////////////////////////
 
 InvokeDefinition:
-	{InvokeDefinition} 'invokable' ('at' path?=STRING)? ('using' method?=RESTMethod)? ('{'
+	{InvokeDefinition} 'invokable' ('at' path=STRING)? ('using' method=RESTMethod)? ('{'
 		(params += InvokationParam+)
 	'}')?
 ;
