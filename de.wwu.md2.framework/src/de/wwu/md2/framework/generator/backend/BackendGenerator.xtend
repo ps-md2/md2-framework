@@ -12,6 +12,7 @@ import static de.wwu.md2.framework.generator.backend.DatatypeClasses.*
 import static de.wwu.md2.framework.generator.backend.DotClasspath.*
 import static de.wwu.md2.framework.generator.backend.DotProjectFile.*
 import static de.wwu.md2.framework.generator.backend.EnumAndEntityClass.*
+import static de.wwu.md2.framework.generator.backend.ExternalWebServiceClass.*
 import static de.wwu.md2.framework.generator.backend.PersistenceXml.*
 import static de.wwu.md2.framework.generator.backend.ProjectSettings.*
 import static de.wwu.md2.framework.generator.backend.ValidationResult.*
@@ -84,6 +85,10 @@ class BackendGenerator extends AbstractPlatformGenerator {
 		fsa.generateFile(rootFolder + "/src/" + rootFolder.replace('.', '/') + "/ws/WorkflowStateWS.java", createWorkflowStateWS(rootFolder))
 		fsa.generateFile(rootFolder + "/src/" + rootFolder.replace('.', '/') + "/ws/EventHandlerWS.java", createEventHandlerWS(rootFolder))
 		
+		// Gemerate external webService files
+		dataContainer.workflowElements.filter[it.invoke.size>0].forEach[wfe|
+			fsa.generateFile(rootFolder + "/src/" + rootFolder.replace('.', '/') + "/ws/external/" + wfe.name.toFirstUpper + "ExternalWS.java", createExternalWorkflowElementWS(basePackageName, wfe))
+		]
 		// Generate common backend files
 		fsa.generateFile(rootFolder + "/src/" + rootFolder.replace('.', '/') + "/Utils.java", createUtils(basePackageName))
 		fsa.generateFile(rootFolder + "/src/" + rootFolder.replace('.', '/') + "/Config.java", createConfig(basePackageName, dataContainer))
