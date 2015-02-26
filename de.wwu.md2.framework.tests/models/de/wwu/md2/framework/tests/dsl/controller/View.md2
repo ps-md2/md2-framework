@@ -19,6 +19,7 @@ FlowLayoutPane complaintView (vertical) {
 		label "Additional Description"
 		type "input"
 	}
+	Button Next {text "Next"}
 		
 }
 
