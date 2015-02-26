@@ -3,22 +3,32 @@ package de.wwu.md2.framework.validation
 import com.google.inject.Inject
 import de.wwu.md2.framework.mD2.AbstractViewGUIElementRef
 import de.wwu.md2.framework.mD2.AllowedOperation
+import de.wwu.md2.framework.mD2.AttrIsOptional
+import de.wwu.md2.framework.mD2.Attribute
 import de.wwu.md2.framework.mD2.AttributeSetTask
+import de.wwu.md2.framework.mD2.AttributeType
+import de.wwu.md2.framework.mD2.BooleanType
 import de.wwu.md2.framework.mD2.CallTask
 import de.wwu.md2.framework.mD2.CompareExpression
 import de.wwu.md2.framework.mD2.ContentProviderOperationAction
 import de.wwu.md2.framework.mD2.ContentProviderReference
 import de.wwu.md2.framework.mD2.ContentProviderSetTask
 import de.wwu.md2.framework.mD2.CustomAction
-import de.wwu.md2.framework.mD2.EventBindingTask
-import de.wwu.md2.framework.mD2.EventUnbindTask
+import de.wwu.md2.framework.mD2.DateTimeType
+import de.wwu.md2.framework.mD2.DateType
+import de.wwu.md2.framework.mD2.Entity
+import de.wwu.md2.framework.mD2.EnumType
 import de.wwu.md2.framework.mD2.FireEventAction
+import de.wwu.md2.framework.mD2.FloatType
+import de.wwu.md2.framework.mD2.IntegerType
 import de.wwu.md2.framework.mD2.InvokeBooleanValue
 import de.wwu.md2.framework.mD2.InvokeDateTimeValue
 import de.wwu.md2.framework.mD2.InvokeDateValue
 import de.wwu.md2.framework.mD2.InvokeDefaultValue
+import de.wwu.md2.framework.mD2.InvokeDefinition
 import de.wwu.md2.framework.mD2.InvokeFloatValue
 import de.wwu.md2.framework.mD2.InvokeIntValue
+import de.wwu.md2.framework.mD2.InvokeParam
 import de.wwu.md2.framework.mD2.InvokeStringValue
 import de.wwu.md2.framework.mD2.InvokeTimeValue
 import de.wwu.md2.framework.mD2.InvokeValue
@@ -31,45 +41,32 @@ import de.wwu.md2.framework.mD2.ProcessChain
 import de.wwu.md2.framework.mD2.ProcessChainGoToNext
 import de.wwu.md2.framework.mD2.ProcessChainGoToPrevious
 import de.wwu.md2.framework.mD2.ProcessChainStep
+import de.wwu.md2.framework.mD2.ReferencedModelType
+import de.wwu.md2.framework.mD2.ReferencedType
 import de.wwu.md2.framework.mD2.SimpleActionRef
+import de.wwu.md2.framework.mD2.StringType
+import de.wwu.md2.framework.mD2.TimeType
 import de.wwu.md2.framework.mD2.UnmappingTask
 import de.wwu.md2.framework.mD2.ViewElementSetTask
 import de.wwu.md2.framework.mD2.WhereClauseCompareExpression
 import de.wwu.md2.framework.mD2.WorkflowElement
 import de.wwu.md2.framework.mD2.WorkflowElementEntry
+import de.wwu.md2.framework.mD2.impl.BooleanTypeImpl
+import de.wwu.md2.framework.mD2.impl.DateTimeTypeImpl
+import de.wwu.md2.framework.mD2.impl.DateTypeImpl
+import de.wwu.md2.framework.mD2.impl.FloatTypeImpl
+import de.wwu.md2.framework.mD2.impl.IntegerTypeImpl
+import de.wwu.md2.framework.mD2.impl.StringTypeImpl
+import de.wwu.md2.framework.mD2.impl.TimeTypeImpl
 import de.wwu.md2.framework.util.GetFiredEventsHelper
 import java.util.HashMap
+import java.util.HashSet
 import java.util.Map
+import org.eclipse.emf.ecore.EStructuralFeature
 import org.eclipse.xtext.validation.Check
 import org.eclipse.xtext.validation.EValidatorRegistrar
 
 import static extension de.wwu.md2.framework.util.TypeResolver.*
-import de.wwu.md2.framework.mD2.InvokeDefinition
-import org.eclipse.emf.ecore.EStructuralFeature
-import java.util.HashSet
-import de.wwu.md2.framework.mD2.InvokeParam
-import de.wwu.md2.framework.mD2.Entity
-import de.wwu.md2.framework.mD2.ReferencedModelType
-import de.wwu.md2.framework.mD2.AttrIsOptional
-import de.wwu.md2.framework.mD2.ReferencedType
-import de.wwu.md2.framework.mD2.IntegerType
-import de.wwu.md2.framework.mD2.FloatType
-import de.wwu.md2.framework.mD2.StringType
-import de.wwu.md2.framework.mD2.BooleanType
-import de.wwu.md2.framework.mD2.DateType
-import de.wwu.md2.framework.mD2.TimeType
-import de.wwu.md2.framework.mD2.DateTimeType
-import de.wwu.md2.framework.mD2.EnumType
-import de.wwu.md2.framework.mD2.Attribute
-import de.wwu.md2.framework.mD2.PathTail
-import de.wwu.md2.framework.mD2.AttributeType
-import de.wwu.md2.framework.mD2.impl.IntegerTypeImpl
-import de.wwu.md2.framework.mD2.impl.FloatTypeImpl
-import de.wwu.md2.framework.mD2.impl.StringTypeImpl
-import de.wwu.md2.framework.mD2.impl.BooleanTypeImpl
-import de.wwu.md2.framework.mD2.impl.DateTypeImpl
-import de.wwu.md2.framework.mD2.impl.TimeTypeImpl
-import de.wwu.md2.framework.mD2.impl.DateTimeTypeImpl
 
 /**
  * Valaidators for all controller elements of MD2.
@@ -102,12 +99,9 @@ class ControllerValidator extends AbstractMD2JavaValidator {
 	def checkNoFireEventActionInInitBlock(WorkflowElement wfe){
 		val initActions = wfe.initActions.filter(CustomAction).map[it.codeFragments].flatten
 		
-		val bindActions = initActions.filter(EventBindingTask).map[it.actions].flatten
-		val unbindActions = initActions.filter(EventUnbindTask).map[it.actions].flatten
 		val callActions = initActions.filter(CallTask).map[it.action]
 		
-		val allActions = bindActions + unbindActions + callActions
-		val fireEventActions = allActions.filter(SimpleActionRef).map[it.action].filter(FireEventAction)
+		val fireEventActions = callActions.filter(SimpleActionRef).map[it.action].filter(FireEventAction)
 		
 		fireEventActions.forEach[
 			acceptError(it.workflowEvent.name + ": Workflow events must not be fired inside the onInit block!", it, MD2Package.eINSTANCE.fireEventAction_WorkflowEvent , -1, EVENTININIT)
