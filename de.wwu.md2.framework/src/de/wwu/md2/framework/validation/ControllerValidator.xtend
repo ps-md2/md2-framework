@@ -31,6 +31,7 @@ import de.wwu.md2.framework.mD2.SimpleActionRef
 import de.wwu.md2.framework.mD2.FireEventAction
 import de.wwu.md2.framework.mD2.Label
 import de.wwu.md2.framework.mD2.AbstractViewGUIElementRef
+import javax.swing.text.DefaultEditorKit.CutAction
 
 /**
  * Valaidators for all controller elements of MD2.
@@ -43,6 +44,7 @@ class ControllerValidator extends AbstractMD2JavaValidator {
     }
     
     public static final String EMPTYPROCESSCHAIN = "emptyProcessChain";
+    public static final String SAVEBEFOREFIREEVENT = "saveBeforeFireEvent";
     
     @Inject
     GetFiredEventsHelper helper;
@@ -345,4 +347,22 @@ class ControllerValidator extends AbstractMD2JavaValidator {
         }
     }
 	
+	
+	/**
+	 * Checks for Actions after a FireEventAction and throws a warning 
+	 * for this not recommended behavior.
+	 * 
+	 * @param CustomAction
+	 */
+	@Check
+	def checkNoSavingAfterFireEvent(CustomAction caction){
+		val callTasks = caction.codeFragments.filter(CallTask)
+		val fireevents = callTasks.map[it.eAllContents.filter(FireEventAction).toSet].flatten.toList
+		val lastFireEvent = (fireevents.last as FireEventAction)
+		val lastFireEventPosition = caction.codeFragments.indexOf((lastFireEvent.eContainer as SimpleActionRef).eContainer as CallTask) ;
+		// Check if position of last FireEventAction is the last CodeFragment within the CustomAction, if not throw a warning
+		if (lastFireEventPosition < caction.codeFragments.size-1){
+			warning("There are actions defined after the FireEventAction call. Please be sure that this is wanted.", lastFireEvent, null, -1, SAVEBEFOREFIREEVENT);
+		}
+	}
 }
