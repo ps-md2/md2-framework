@@ -1,38 +1,49 @@
 package de.wwu.md2.framework.validation
 
 import com.google.inject.Inject
+import de.wwu.md2.framework.mD2.AbstractViewGUIElementRef
 import de.wwu.md2.framework.mD2.AllowedOperation
 import de.wwu.md2.framework.mD2.AttributeSetTask
+import de.wwu.md2.framework.mD2.CallTask
 import de.wwu.md2.framework.mD2.CompareExpression
 import de.wwu.md2.framework.mD2.ContentProviderOperationAction
 import de.wwu.md2.framework.mD2.ContentProviderReference
 import de.wwu.md2.framework.mD2.ContentProviderSetTask
+import de.wwu.md2.framework.mD2.CustomAction
+import de.wwu.md2.framework.mD2.EventBindingTask
+import de.wwu.md2.framework.mD2.EventUnbindTask
+import de.wwu.md2.framework.mD2.FireEventAction
+import de.wwu.md2.framework.mD2.InvokeBooleanValue
+import de.wwu.md2.framework.mD2.InvokeDateTimeValue
+import de.wwu.md2.framework.mD2.InvokeDateValue
+import de.wwu.md2.framework.mD2.InvokeDefaultValue
+import de.wwu.md2.framework.mD2.InvokeFloatValue
+import de.wwu.md2.framework.mD2.InvokeIntValue
+import de.wwu.md2.framework.mD2.InvokeStringValue
+import de.wwu.md2.framework.mD2.InvokeTimeValue
+import de.wwu.md2.framework.mD2.InvokeValue
+import de.wwu.md2.framework.mD2.Label
 import de.wwu.md2.framework.mD2.LocationProviderReference
 import de.wwu.md2.framework.mD2.MD2Package
 import de.wwu.md2.framework.mD2.MappingTask
 import de.wwu.md2.framework.mD2.Operator
-import de.wwu.md2.framework.mD2.UnmappingTask
-import de.wwu.md2.framework.mD2.ViewElementSetTask
-import de.wwu.md2.framework.mD2.WhereClauseCompareExpression
 import de.wwu.md2.framework.mD2.ProcessChain
 import de.wwu.md2.framework.mD2.ProcessChainGoToNext
 import de.wwu.md2.framework.mD2.ProcessChainGoToPrevious
 import de.wwu.md2.framework.mD2.ProcessChainStep
+import de.wwu.md2.framework.mD2.SimpleActionRef
+import de.wwu.md2.framework.mD2.UnmappingTask
+import de.wwu.md2.framework.mD2.ViewElementSetTask
+import de.wwu.md2.framework.mD2.WhereClauseCompareExpression
+import de.wwu.md2.framework.mD2.WorkflowElement
+import de.wwu.md2.framework.mD2.WorkflowElementEntry
+import de.wwu.md2.framework.util.GetFiredEventsHelper
+import java.util.HashMap
+import java.util.Map
 import org.eclipse.xtext.validation.Check
 import org.eclipse.xtext.validation.EValidatorRegistrar
 
 import static extension de.wwu.md2.framework.util.TypeResolver.*
-import de.wwu.md2.framework.mD2.WorkflowElementEntry
-import de.wwu.md2.framework.util.GetFiredEventsHelper
-import de.wwu.md2.framework.mD2.WorkflowElement
-import de.wwu.md2.framework.mD2.CustomAction
-import de.wwu.md2.framework.mD2.EventBindingTask
-import de.wwu.md2.framework.mD2.EventUnbindTask
-import de.wwu.md2.framework.mD2.CallTask
-import de.wwu.md2.framework.mD2.SimpleActionRef
-import de.wwu.md2.framework.mD2.FireEventAction
-import de.wwu.md2.framework.mD2.Label
-import de.wwu.md2.framework.mD2.AbstractViewGUIElementRef
 
 /**
  * Valaidators for all controller elements of MD2.
@@ -45,6 +56,9 @@ class ControllerValidator extends AbstractMD2JavaValidator {
     }
     
     public static final String EMPTYPROCESSCHAIN = "emptyProcessChain";
+    
+    public static final String INVOKEDEFAULTVALUETYPEMISSMATCH = "invokeDefaultValueTypeMissmatch";
+    public static final String INVOKEDEFAULTVALUETYPENOTSUPPORTED = "invokeDefaultValueTypeNotSupported";
     
     @Inject
     GetFiredEventsHelper helper;
@@ -349,5 +363,41 @@ class ControllerValidator extends AbstractMD2JavaValidator {
                     processChain, null, -1, EMPTYPROCESSCHAIN);
         }
     }
+    
+	/////////////////////////////////////////////////////////
+	/// Invoke Validators
+	/////////////////////////////////////////////////////////
 	
+	static final Map<Class<? extends InvokeValue>, String> invokeValueTypeMap= getInvokeValueTypeHashMap()
+	
+	private static def getInvokeValueTypeHashMap(){
+		val map = new HashMap<Class<? extends InvokeValue>,String>()
+		map.put(InvokeIntValue,"int")
+		map.put(InvokeFloatValue, "float")
+		map.put(InvokeStringValue, "string")
+		map.put(InvokeBooleanValue, "boolean")
+		map.put(InvokeDateValue, "date")
+		map.put(InvokeTimeValue, "time")
+		map.put(InvokeDateTimeValue, "datetime")
+		return map
+	}
+	
+	/**
+     * Ensure, that InvokeDefaultValue has same type
+     * @param invokeDefaultValue
+     */
+    @Check
+    def checkForTypeOfInvokeDefaultValue(InvokeDefaultValue defaultValue) {
+		var valueType = invokeValueTypeMap.get(defaultValue.invokeValue.class)
+		var cpType = invokeValueTypeMap.get(defaultValue.field.tail.resolveAttribute)
+		if (valueType != null && cpType!= null && !valueType.equals(cpType)){
+			val error = '''The types of the content provider and its default value have to match each other! Expected default value to be of type «cpType» but was «valueType»!'''
+			acceptError(error, defaultValue, MD2Package.eINSTANCE.invokeDefaultValue_InvokeValue, -1, INVOKEDEFAULTVALUETYPEMISSMATCH)
+		}
+		if (cpType == null){
+			val error = '''The type «defaultValue.field.tail.resolveAttribute.attributeTypeName» of the content provider reference is not supported to be set to a default value!'''
+			acceptError(error, defaultValue, MD2Package.eINSTANCE.invokeParam_Field, -1, INVOKEDEFAULTVALUETYPENOTSUPPORTED)
+		}	
+    }
+
 }
