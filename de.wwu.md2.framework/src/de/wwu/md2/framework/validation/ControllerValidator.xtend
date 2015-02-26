@@ -83,6 +83,7 @@ class ControllerValidator extends AbstractMD2JavaValidator {
     public static final String INVOKEDEFAULTVALUETYPEMISSMATCH = "invokeDefaultValueTypeMissmatch";
     public static final String INVOKEDEFAULTVALUETYPENOTSUPPORTED = "invokeDefaultValueTypeNotSupported";
     public static final String INVOKEMISSINGREQUIREDATTRIBUTE = "invokeMissingRequiredAttribute";
+    public static final String INVOKEPATHCOLLISION = "invokePathCollision"
     
     @Inject
     GetFiredEventsHelper helper;
@@ -463,7 +464,7 @@ class ControllerValidator extends AbstractMD2JavaValidator {
 					} else {
 						error += ''' When the path is not set the default is "".'''
 					}
-					error(error, invoke, structuralFeature, -1, INVOKEDEFAULTVALUETYPENOTSUPPORTED)
+					error(error, invoke, structuralFeature, -1, INVOKEPATHCOLLISION)
 				}
 		}
 		}
