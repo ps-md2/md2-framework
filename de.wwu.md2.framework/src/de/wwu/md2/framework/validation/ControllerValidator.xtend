@@ -45,6 +45,7 @@ class ControllerValidator extends AbstractMD2JavaValidator {
     
     public static final String EMPTYPROCESSCHAIN = "emptyProcessChain";
     public static final String SAVEBEFOREFIREEVENT = "saveBeforeFireEvent";
+    public static final String MULTIPLEFIREEVENTS = "multipleFireEvents";
     
     @Inject
     GetFiredEventsHelper helper;
@@ -346,6 +347,19 @@ class ControllerValidator extends AbstractMD2JavaValidator {
                     processChain, null, -1, EMPTYPROCESSCHAIN);
         }
     }
+	
+	
+	/**
+	 * Warning for multiple FireEventActions.
+	 * 
+	 * @param CustomAction
+	 */
+	@Check
+	def checkForOnlyOneFireEventActionPerCustomAction (CustomAction caction) {
+		if (caction.codeFragments.map[it.eAllContents.filter(FireEventAction).toSet].flatten.toList.size>1){
+			warning("Multiple FireEventActions are not supported, probably only the first one will be executed.", caction, null, -1, MULTIPLEFIREEVENTS);
+		}
+	}
 	
 	
 	/**
