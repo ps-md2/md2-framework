@@ -66,8 +66,10 @@ public class ModelProvider {
 	public static final String EMPTY_PROCESS_CHAIN_C = "dsl/controller/validator/EmptyProcessChain.md2";
 	
 	public static final String INVOKE_C = "dsl/controller/invoke/WorkingController.md2";
+	public static final String INVOKE_REQUIREDATTRIBUTE_C = "dsl/controller/invoke/validator/RequiredAttributeController.md2";
 	
 	public static final String INVOKE_W = "dsl/controller/invoke/WorkingWorkflow.md2";
+	
 
 	//********Validator*****//
 	
