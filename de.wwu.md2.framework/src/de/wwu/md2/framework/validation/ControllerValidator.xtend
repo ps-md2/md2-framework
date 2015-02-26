@@ -365,14 +365,15 @@ class ControllerValidator extends AbstractMD2JavaValidator {
 	/**
 	 * Checks for Actions after a FireEventAction and throws a warning 
 	 * for this not recommended behavior.
-	 * 
+	 *
 	 * @param CustomAction
 	 */
 	@Check
 	def checkNoSavingAfterFireEvent(CustomAction caction){
 		val callTasks = caction.codeFragments.filter(CallTask)
-		val fireevents = callTasks.map[it.eAllContents.filter(FireEventAction).toSet].flatten.toList
+		val fireevents = callTasks.map[it.eAllContents.filter(FireEventAction).toSet].flatten.toList		
 		val lastFireEvent = (fireevents.last as FireEventAction)
+		// TODO: PROBLEM WITH "NESTED" CALLS (E.G. IF(){CALL FIREEVENT()})
 		val lastFireEventPosition = caction.codeFragments.indexOf((lastFireEvent.eContainer as SimpleActionRef).eContainer as CallTask) ;
 		// Check if position of last FireEventAction is the last CodeFragment within the CustomAction, if not throw a warning
 		if (lastFireEventPosition < caction.codeFragments.size-1){
