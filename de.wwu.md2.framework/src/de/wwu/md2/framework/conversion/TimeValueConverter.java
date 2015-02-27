@@ -18,20 +18,22 @@ import de.wwu.md2.framework.util.MD2Util;
  */
 public class TimeValueConverter extends AbstractNullSafeConverter<Date> {
 	
-	private final Collection<String> PATTERNS = Sets.newHashSet("HH:mm:ssZ", "HH:mm:ss");
-	private final String DEFAULT_PATTERN = "HH:mm:ssZ";
+	private final Collection<String> PATTERNS = Sets.newHashSet("HH:mm:ssZ", "HH:mm:ssXXX", "HH:mm:ss");
+	private final String DEFAULT_PATTERN = "HH:mm:ssXXX";
 	
 	@Override
 	protected String internalToString(Date date) {
 		SimpleDateFormat dateFormat = new SimpleDateFormat(DEFAULT_PATTERN);
-		return '"' + dateFormat.format(date) + '"';
+		return dateFormat.format(date);
 	}
 	
 	@Override
 	protected Date internalToValue(String dateString, INode node) throws ValueConverterException {
 		
 		// get rid of quotes
-		dateString = dateString.substring(1, dateString.length() - 1);
+		if(dateString.indexOf("\"") != -1 || dateString.indexOf("'") != -1) {
+			dateString = dateString.substring(1, dateString.length() - 1);
+		}
 		
 		SimpleDateFormat dateFormat = new SimpleDateFormat();
 		dateFormat.setLenient(false);

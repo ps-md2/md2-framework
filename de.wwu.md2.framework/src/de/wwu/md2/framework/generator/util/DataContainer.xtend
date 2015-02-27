@@ -1,122 +1,152 @@
 package de.wwu.md2.framework.generator.util
 
-import de.wwu.md2.framework.mD2.AlternativesPane
-import de.wwu.md2.framework.mD2.Condition
 import de.wwu.md2.framework.mD2.ContainerElement
-import de.wwu.md2.framework.mD2.ContainerElementDef
 import de.wwu.md2.framework.mD2.ContentProvider
 import de.wwu.md2.framework.mD2.Controller
 import de.wwu.md2.framework.mD2.CustomAction
+import de.wwu.md2.framework.mD2.Entity
+import de.wwu.md2.framework.mD2.Enum
 import de.wwu.md2.framework.mD2.GotoViewAction
 import de.wwu.md2.framework.mD2.MD2Model
 import de.wwu.md2.framework.mD2.Main
 import de.wwu.md2.framework.mD2.Model
-import de.wwu.md2.framework.mD2.OnConditionEvent
 import de.wwu.md2.framework.mD2.RemoteValidator
-import de.wwu.md2.framework.mD2.TabbedAlternativesPane
 import de.wwu.md2.framework.mD2.View
-import de.wwu.md2.framework.mD2.Workflow
 import java.util.Collection
-import java.util.List
-import java.util.Map
 import java.util.Set
+import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.ResourceSet
-import org.eclipse.xtend.lib.Property
+import org.eclipse.xtend.lib.annotations.Accessors
 
-import static de.wwu.md2.framework.generator.util.MD2GeneratorUtil.*
+import static de.wwu.md2.framework.generator.util.MD2GeneratorUtil.*import de.wwu.md2.framework.mD2.Workflow
+import de.wwu.md2.framework.mD2.App
+import de.wwu.md2.framework.mD2.WorkflowElement
+import java.util.Map
+import de.wwu.md2.framework.mD2.EventBindingTask
+import de.wwu.md2.framework.mD2.SimpleActionRef
+import de.wwu.md2.framework.mD2.FireEventAction
+import de.wwu.md2.framework.mD2.WorkflowEvent
+import de.wwu.md2.framework.mD2.WorkflowElementEntry
+import de.wwu.md2.framework.mD2.ActionReference
+import de.wwu.md2.framework.mD2.CallTask
 
 /**
- * Singleton DataContainer to store data that are used throughout the
- * generation process.
+ * DataContainer to store data that are used throughout the generation process.
+ * That avoids that all these elements have to be extracted over and over again in the actual generators.
+ * Hint: From the sets in this file it can be inferred which elements have to be generated, i.e. a class for
+ * CustomActions, ContentProviders, RemoteValidators, Views and Entities have to be generated as they are the only
+ * none-static elements in MD2.
  */
-class DataContainer
-{
+class DataContainer {
+	
 	///////////////////////////////////////
 	// Data Container
 	///////////////////////////////////////
 	
-	@Property
-	private Collection<View> views
+	@Accessors
+	public View view
 	
-	@Property
-	private Collection<Controller> controllers
+	@Accessors
+	public Controller controller
 	
-	@Property
-	private Collection<Model> models
+	@Accessors
+	public Model model
 	
-	@Property
-	private Main main
+	@Accessors
+	public Workflow workflow
 	
-	@Property
-	private Set<ContainerElement> viewContainers
 	
-	@Property
-	private Collection<ContentProvider> contentProviders
+	///////////////////////////////////////
+	// Controller Elements
+	///////////////////////////////////////
 	
-	@Property
-	private Collection<Workflow> workflows
+	@Accessors
+	public Main main
 	
-	@Property
-	private Collection<CustomAction> customActions
+	@Accessors
+	public Collection<ContentProvider> contentProviders
 	
-	@Property
-	private Collection<OnConditionEvent> onConditionEvents
+	@Accessors
+	public Collection<CustomAction> customActions
 	
-	@Property
-	private Collection<RemoteValidator> remoteValidators
+	@Accessors
+	public Collection<RemoteValidator> remoteValidators
 	
-	/*
-	 * Contains a collection of all conditions, where the key represents the name of the condition
+	@Accessors
+	public Collection<WorkflowElement> workflowElements
+	
+	
+	///////////////////////////////////////
+	// View Elements
+	///////////////////////////////////////
+	
+	/**
+	 * View panes that are at the root level, i.e. they have no containing container.
+	 * Only those are taken into account that are accessed via a GotoViewAction (after
+	 * preprocessing, i.e. views that are accessed via workflows are included) or that
+	 * have any TabbedAlternativesPane or AlternativesPane as a child element that contain
+	 * any view containers that are accessed by a GotoViewAction.
 	 */
-	@Property
-	private Map<String, Condition> conditions
+	@Accessors
+	public Map<WorkflowElement, Set<ContainerElement>> rootViewContainers
 	
-	@Property
-	private TabbedAlternativesPane tabbedAlternativesPane
 	
-	@Property
-	private List<ContainerElement> tabbedViewContent
+	///////////////////////////////////////
+	// Model Elements
+	///////////////////////////////////////
 	
-	@Property
-	private Set<ContainerElement> viewContainersInAnyAlternativesPane
+	@Accessors
+	public Collection<Entity> entities
 	
-	@Property
-	private Set<ContainerElement> viewContainersNotInAnyAlternativesPane
+	@Accessors
+	public Collection<Enum> enums
+	
+	
+	///////////////////////////////////////
+	// Workflow Elements
+	///////////////////////////////////////
+	
+	@Accessors
+	public Collection<App> apps
 	
 	
 	/**
-	 * Initializes the lists offered by the data container
+	 * Initializes the sets offered by the data container
 	 */
 	new(ResourceSet input) {
+		
 		intializeModelTypedLists(input)
 		
 		extractUniqueMain
 		
-		if(main == null) {
-			return
-		}
-		
 		extractElementsFromControllers
 		
-		postProcessViewCollection
+		extractElementsFromModels
+		
+		extractRootViews
+		
+		extractElementsFromWorkflows
+	
 	}
 	
 	/**
 	 * Provide sets which are populated with all views, collections and models respectively.
 	 */
 	def private intializeModelTypedLists(ResourceSet input) {
-		views = newHashSet()
-		controllers = newHashSet()
-		models = newHashSet()
-		val Iterable<MD2Model> parts = input.resources.map(r | r.allContents.toIterable.filter(typeof(MD2Model))).flatten
-		for(md2model : parts) {
-			switch md2model.modelLayer {
-				// Xtend resolves runtime argument type for modelLayer
-				View : views.add(md2model.modelLayer as View)
-				Model : models.add(md2model.modelLayer as Model)
-				Controller : controllers.add(md2model.modelLayer as Controller)
+		
+		val md2models = input.resources.map[ r |
+			r.contents.filter(MD2Model)
+		].flatten
+		
+		md2models.forEach[ md2model |
+			val modelLayer = md2model.modelLayer
+			switch modelLayer {
+				View : view = modelLayer
+				Model : model = modelLayer
+				Controller : controller = modelLayer
+				Workflow : workflow = modelLayer
 			}
-		}
+		]
 	}
 	
 	/**
@@ -124,108 +154,106 @@ class DataContainer
 	 * and app version without iterating over the object tree over and over again.
 	 */
 	def private extractUniqueMain() {
-		val controllerContainingMain = controllers.findFirst(ctrl | ctrl.controllerElements.exists(ctrlElem | ctrlElem instanceof Main))
-		if(controllerContainingMain != null) {
-			main = controllerContainingMain.controllerElements.findFirst(ctrlElem | ctrlElem instanceof Main) as Main
-		}
+	    main = controller.controllerElements.filter(Main).head
 	}
 	
+	/**
+	 * Iterate over all controllers and collect relevant elements for the generation process.
+	 */
 	def private extractElementsFromControllers() {
-		// Iterate over all controllers and collect relevant information:
-		// About the views that have to be generated:
-		//    Generate views => get start view and all called views in work flow steps and change view actions
-		viewContainers = newHashSet
 		customActions = newHashSet
 		contentProviders = newHashSet
-		workflows = newHashSet
-		onConditionEvents = newHashSet
-		conditions = newHashMap
 		remoteValidators = newHashSet
+		workflowElements = newHashSet
 		
-		viewContainers.add(resolveContainerElement(main.startView));
-		for (controller : controllers) {
-			for (controllerElement : controller.controllerElements) {
-				switch controllerElement {
-					Workflow: {
-						// Filter relevant views that may be root views
-						controllerElement.workflowSteps.forEach [step |
-							if(step.view != null) {
-								viewContainers.add(resolveContainerElement(step.view))
-							}
-						]
-						
-						// Store work flow
-						workflows.add(controllerElement)
-						
-						// Store conditions
-						controllerElement.workflowSteps.forEach [step |
-							if(step.forwardCondition != null) {
-								conditions.put(step.name + "_ForwardCondition", step.forwardCondition)
-							}
-							if(step.backwardCondition != null) {
-								conditions.put(step.name + "_BackwardCondition", step.backwardCondition)
-							}
-						]
-					}
-					
-					CustomAction: {
-						// Filter relevant views that may be root views
-						controllerElement.eAllContents.toIterable.filter(typeof(GotoViewAction)).forEach [gotoViewAction |
-							viewContainers.add(resolveContainerElement(gotoViewAction.view))
-						]
-						
-						// Store custom actions to generate
-						customActions.add(controllerElement)
-					}
-					
-					ContentProvider: {
-						contentProviders.add(controllerElement)
-					}
-					
-					OnConditionEvent: {
-						onConditionEvents.add(controllerElement)
-						
-						// Store condition
-						if(controllerElement.condition != null) {
-							conditions.put(controllerElement.name, controllerElement.condition)
-						}
-					}
-					
-					RemoteValidator: {
-						remoteValidators.add(controllerElement)
-					}
+		var ce = controller.controllerElements 
+		
+		customActions     = ce.filter(CustomAction).toSet
+		contentProviders  = ce.filter(ContentProvider).toSet
+		remoteValidators  = ce.filter(RemoteValidator).toSet
+		workflowElements  = ce.filter(WorkflowElement).toSet
+	}
+	
+	/**
+	 * Extract all entities and enums.
+	 */
+	def private extractElementsFromModels() {
+		entities = newHashSet
+		enums = newHashSet
+		
+		entities = model.modelElements.filter(Entity).toSet
+		enums = model.modelElements.filter(Enum).toSet
+	}
+	
+	/**
+	 * View panes that are at the root level, i.e. they have no containing container.
+	 * Only those are taken into account that are accessed via a GotoViewAction (after
+	 * preprocessing, i.e. views that are accessed via workflows are included) or that
+	 * have any TabbedAlternativesPane or AlternativesPane as a child element that contain
+	 * any view containers that are accessed by a GotoViewAction.
+	 */
+	def private extractRootViews() {
+		
+		rootViewContainers = newHashMap
+			
+		for (WorkflowElement workflowElement : workflowElements){
+			// Get all views that are accessed by GotoViewActions at some time
+			val containers = (workflowElement.actions + workflowElement.initActions).filter(CustomAction).map[ customAction |
+					customAction.eAllContents.toIterable
+				].flatten.filter(GotoViewAction).map[ gotoView |
+					resolveContainerElement(gotoView.view)
+				]
+			
+			// Calculate root view for each view that is accessed via a GotoViewAction
+			rootViewContainers.put(workflowElement, containers.map[ container |
+				var EObject elem = container
+				while (!(elem.eContainer instanceof View)) {
+					elem = elem.eContainer
 				}
-			}
+				elem as ContainerElement
+			].toSet)
 		}
 	}
 	
-	def void postProcessViewCollection() {
-		// Post-processing of view collection
-		// => 1. get ordered list of all views that are in the tabbed pane
-		tabbedViewContent = newArrayList
-		views.forEach [view |
-			val tabbedPane = view.viewElements.filter(typeof(TabbedAlternativesPane)).last
-			if(tabbedPane != null) {
-				// Save the TabbedAlternativesPane
-				tabbedAlternativesPane = tabbedPane
-				
-				// Add all tabs to the respective list
-				tabbedViewContent.addAll(tabbedPane.elements.filter(typeof(ContainerElementDef)).map(c | c.value))
-				// Additionally add the tabs to the set of view containers (if they are already in there, they will not be added again since viewContainers is a set)
-				viewContainers.addAll(tabbedPane.elements.filter(typeof(ContainerElementDef)).map(c | c.value))
-			}
-		]
-		
-		// => 2. extract all views that are direct children of an alternatives pane or tabbed alternatives pane from the set of views to generate
-		viewContainersInAnyAlternativesPane = newHashSet
-		viewContainersInAnyAlternativesPane.addAll(viewContainers.filter(c | c.eContainer.eContainer instanceof AlternativesPane))
-		if(tabbedViewContent != null) {
-			viewContainersInAnyAlternativesPane.addAll(tabbedViewContent)
-		}
-		
-		// => 3. get set difference of (2.) and the set of views to generate
-		viewContainersNotInAnyAlternativesPane = newHashSet
-		viewContainersNotInAnyAlternativesPane.addAll(viewContainers)
-		viewContainersNotInAnyAlternativesPane.removeAll(viewContainersInAnyAlternativesPane)
+	/**
+	 * Extract all apps.
+	 */
+	def private extractElementsFromWorkflows() {
+		apps = newHashSet
+		apps = workflow.apps.toSet
 	}
+	
+	/**
+	 * Returns all workflows associated with the current app.
+	 */
+	def public workflowElementsForApp(App app) {
+	    val wfes = app.workflowElements.map[it.workflowElementReference].toSet
+	    return wfes
+	}
+	
+	/**
+	 * Return all events declared in a workflowElement.
+	 */
+    def public Iterable<WorkflowEvent> getEventsFromWorkflowElement(WorkflowElement wfe) {
+       
+       var wfeEntry = workflow.workflowElementEntries.filter[it.workflowElement.equals(wfe)].head
+       
+       return wfeEntry.firedEvents.map[it.event]
+    }
+
+    
+    /**
+	 * Return the workflowElement that is started by an event.
+	 */
+    def public WorkflowElement getNextWorkflowElement(WorkflowElement wfe, WorkflowEvent e) {
+        var wfes = workflow.workflowElementEntries
+
+        for (WorkflowElementEntry entry : wfes) {
+            if (entry.workflowElement.equals(wfe)) {
+                var searchedEvent = entry.firedEvents.filter[fe|fe.event.name.equals(e.name)].head
+                return searchedEvent.startedWorkflowElement
+            }
+        }
+        return null;
+    }
 }

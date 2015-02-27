@@ -19,20 +19,22 @@ import de.wwu.md2.framework.util.MD2Util;
  */
 public class DateTimeValueConverter extends AbstractNullSafeConverter<Date> {
 	
-	private final Collection<String> PATTERNS = Sets.newHashSet("yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss");
-	private final String DEFAULT_PATTERN = "yyyy-MM-dd'T'HH:mm:ssZ";
+	private final Collection<String> PATTERNS = Sets.newHashSet("yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ssXXX", "yyyy-MM-dd'T'HH:mm:ss");
+	private final String DEFAULT_PATTERN = "yyyy-MM-dd'T'HH:mm:ssXXX";
 	
 	@Override
 	protected String internalToString(Date date) {
 		SimpleDateFormat dateFormat = new SimpleDateFormat(DEFAULT_PATTERN);
-		return '"' + dateFormat.format(date) + '"';
+		return dateFormat.format(date);
 	}
 	
 	@Override
 	protected Date internalToValue(String dateString, INode node) throws ValueConverterException {
 		
 		// get rid of quotes
-		dateString = dateString.substring(1, dateString.length() - 1);
+		if(dateString.indexOf("\"") != -1 || dateString.indexOf("'") != -1) {
+			dateString = dateString.substring(1, dateString.length() - 1);
+		}
 		
 		SimpleDateFormat dateFormat = new SimpleDateFormat();
 		dateFormat.setLenient(false);
@@ -45,7 +47,7 @@ public class DateTimeValueConverter extends AbstractNullSafeConverter<Date> {
 		}
 		
 		if(date == null) {
-			throw new ValueConverterException("No valid date format: Expects \"yyyy-MM-dd'T'HH:mm:ss[(+|-)HHmm]\".", node, null);
+			throw new ValueConverterException("No valid date format: Expects \"yyyy-MM-dd'T'HH:mm:ss[(+|-)HH:mm]\".", node, null);
 		} else {
 			return date;
 		}

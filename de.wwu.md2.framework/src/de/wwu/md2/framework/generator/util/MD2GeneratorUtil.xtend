@@ -1,93 +1,100 @@
 package de.wwu.md2.framework.generator.util
 
+import de.wwu.md2.framework.mD2.AbstractContentProviderPath
+import de.wwu.md2.framework.mD2.AbstractProviderReference
 import de.wwu.md2.framework.mD2.AbstractViewGUIElementRef
 import de.wwu.md2.framework.mD2.Action
 import de.wwu.md2.framework.mD2.ActionReference
 import de.wwu.md2.framework.mD2.AlternativesPane
 import de.wwu.md2.framework.mD2.Attribute
-import de.wwu.md2.framework.mD2.AttributeEqualsExpression
-import de.wwu.md2.framework.mD2.BooleanExpression
 import de.wwu.md2.framework.mD2.CallTask
 import de.wwu.md2.framework.mD2.CombinedAction
 import de.wwu.md2.framework.mD2.ContainerElement
-import de.wwu.md2.framework.mD2.ContentProviderPathDefinition
-import de.wwu.md2.framework.mD2.Controller
+import de.wwu.md2.framework.mD2.ContentProviderPath
+import de.wwu.md2.framework.mD2.ContentProviderReference
 import de.wwu.md2.framework.mD2.CustomAction
-import de.wwu.md2.framework.mD2.CustomCodeFragment
-import de.wwu.md2.framework.mD2.EntityPathDefinition
-import de.wwu.md2.framework.mD2.FloatVal
+import de.wwu.md2.framework.mD2.EntityPath
 import de.wwu.md2.framework.mD2.FlowLayoutPane
 import de.wwu.md2.framework.mD2.GridLayoutPane
-import de.wwu.md2.framework.mD2.IntVal
+import de.wwu.md2.framework.mD2.LocationProviderPath
+import de.wwu.md2.framework.mD2.LocationProviderReference
 import de.wwu.md2.framework.mD2.MD2Model
-import de.wwu.md2.framework.mD2.Main
-import de.wwu.md2.framework.mD2.Model
 import de.wwu.md2.framework.mD2.ModelElement
-import de.wwu.md2.framework.mD2.Operator
 import de.wwu.md2.framework.mD2.PathDefinition
 import de.wwu.md2.framework.mD2.PathTail
 import de.wwu.md2.framework.mD2.ReferencedModelType
-import de.wwu.md2.framework.mD2.SimpleExpression
 import de.wwu.md2.framework.mD2.SimpleType
-import de.wwu.md2.framework.mD2.StringVal
+import de.wwu.md2.framework.mD2.StandardValidator
 import de.wwu.md2.framework.mD2.TabTitleParam
-import de.wwu.md2.framework.mD2.View
+import de.wwu.md2.framework.mD2.ViewElementType
 import de.wwu.md2.framework.mD2.ViewGUIElement
-import de.wwu.md2.framework.mD2.WhereClauseCondition
 import java.util.Collection
 import java.util.HashMap
+import java.util.HashSet
 import java.util.LinkedList
 import java.util.List
+import java.util.concurrent.atomic.AtomicInteger
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.ResourceSet
 import org.eclipse.xtext.naming.DefaultDeclarativeQualifiedNameProvider
 import org.eclipse.xtext.naming.IQualifiedNameProvider
+import de.wwu.md2.framework.mD2.Main
 
 class MD2GeneratorUtil {
-		
+	
 	private static IQualifiedNameProvider qualifiedNameProvider
 	private static HashMap<String, String> qualifiedNameToNameMapping
-	private static int anonymousNameCounter = 0
+	
+	private static AtomicInteger atomicInteger = new AtomicInteger
 	
 	/**
-	 * Get the base package name of the current project.
+	 * Stores all names that were already delivered by getUnifiedName#name.
+	 */
+	private static HashSet<String> uniqueNames = newHashSet
+	
+	/**
+	 * Get the base package name of the current project by taking a random package name and removing the last segment
+	 * .controllers, .views or .models.
 	 */
 	def static getBasePackageName(ResourceSet input) {
-		val model = input.resources.map(r|r.allContents.toIterable.filter(typeof(MD2Model))).flatten.last
-		var packageName = model.getPackage().pkgName;
-		switch model.modelLayer {
-			// Xtend resolves runtime argument type for modelLayer
-			View : packageName.substring(0, packageName.indexOf(".view") )
-			Model : packageName.substring(0, packageName.indexOf(".model"))
-			Controller : packageName.substring(0, packageName.indexOf(".controller"))
-		}
+		val model = input.resources.map[ r |
+			r.allContents.toIterable.filter(MD2Model)
+		].flatten.last
+		val pkgNameSegments = newArrayList
+		pkgNameSegments.addAll(model.package.pkgName.split("\\."))
+		pkgNameSegments.remove(pkgNameSegments.size - 1)
+		pkgNameSegments.join(".")
 	}
 	
 	/**
 	 * Creates a camelCase string from the app name declared in the main block of the app.
 	 */
-	def static createAppName(DataContainer dataContainer) '''«FOR part : dataContainer.main.appName.split(" ")»«part.toFirstUpper»«ENDFOR»'''
+	def static createAppName(DataContainer dataContainer) '''MySuperDupaMD2App'''
 	
 	def static createAppClassName(DataContainer dataContainer) {
 		createAppName(dataContainer) + "Application"
 	}
 	
 	/**
-	 * Returns the name of the given EObject. In case that there is a second EObject with the
+	 * Returns the name of the given ViewElementType. In case that there is a second ViewElementType with the
 	 * same name in another scope (the element has another fully qualified name), the name is extended
 	 * by a number.
 	 * 
-	 * If obj is null, the result of this method is null
+	 * @return A name that identifies the view element uniquely or null if the parameter was null.
 	 */
-	def static getName(EObject obj) {
+	def static getName(ViewElementType obj) {
+		if (obj == null) {
+			return null
+		}
 		
-		if(obj == null) return null
-		if(obj instanceof AbstractViewGUIElementRef) System::err.println("Unwanted behavior: Name resolver was invoked with AbstractViewGUIElementRef instead of ViewGUIElement.")
+		if(qualifiedNameProvider == null) {
+			qualifiedNameProvider = new DefaultDeclarativeQualifiedNameProvider
+		}
+		if(qualifiedNameToNameMapping == null) {
+			qualifiedNameToNameMapping = newHashMap
+		}
 		
-		if(qualifiedNameProvider == null) qualifiedNameProvider = new DefaultDeclarativeQualifiedNameProvider()
-		if(qualifiedNameToNameMapping == null) qualifiedNameToNameMapping = newHashMap
-		
-		var name = obj.getClass.getMethod("getName").invoke(obj) as String
+		var name = obj.name
 		val qualifiedName = qualifiedNameProvider.getFullyQualifiedName(obj).toString
 		
 		if(!qualifiedNameToNameMapping.containsKey(qualifiedName)) {
@@ -106,8 +113,28 @@ class MD2GeneratorUtil {
 	 * source code, but do not have any name in the MD2 language
 	 */
 	def static getAnonymousName() {
-		anonymousNameCounter = anonymousNameCounter + 1
-		"__anonymousName" + anonymousNameCounter
+		getUnifiedName("__anonymous")
+	}
+	
+	/**
+	 * Appends a number with radix 36 to a given string, e.g. to make an object name unique.
+	 */
+	def static getUnifiedName(String name) {
+		var uniqueName = name
+		if (uniqueNames.contains(uniqueName)) {
+			uniqueName = '''«name»0«Integer.toString(atomicInteger.getAndIncrement, 36)»'''
+		}
+		uniqueNames.add(uniqueName)
+		return uniqueName
+	}
+	
+	/**
+	 * A helper method that can be applied on arbitrary objects and that always returns void.
+	 * That is for example useful to suppress the output in template expressions (e.g. the
+	 * returned boolean for List.add)
+	 */
+	def static returnVoid(Object o) {
+		return
 	}
 	
 	/**
@@ -118,6 +145,43 @@ class MD2GeneratorUtil {
 		var EObject obj = guiElement
 		while(!views.contains(obj) && obj != null) { obj = obj.eContainer }
 		obj as ContainerElement
+	}
+	
+	/**
+	 * Helper method to simplify the handling of 'virtual' content providers such as the location provider.
+	 * Returns the name of the contentProvider.
+	 */
+	def static resolveContentProviderName(AbstractContentProviderPath abstractPath) {
+		switch (abstractPath) {
+			ContentProviderPath: abstractPath.contentProviderRef.name.toFirstLower
+			LocationProviderPath: "location"
+		}
+	}
+	
+	/**
+	 * Helper method to simplify the handling of 'virtual' content providers such as the location provider.
+	 * Returns the name of the contentProvider.
+	 */
+	def static resolveContentProviderName(AbstractProviderReference abstractProviderReference) {
+		switch (abstractProviderReference) {
+			ContentProviderReference: abstractProviderReference.contentProvider.name.toFirstLower
+			LocationProviderReference: "location"
+		}
+	}
+	
+	/**
+	 * Helper method to simplify the handling of 'virtual' content providers such as the location provider.
+	 * Returns a string representation of the fully qualified name of the attribute.
+	 */
+	def static resolveContentProviderPathAttribute(AbstractContentProviderPath abstractPath) {
+		switch (abstractPath) {
+			ContentProviderPath: getPathTailAsString(abstractPath.tail)
+			LocationProviderPath: abstractPath.locationField.toString
+		}
+	}
+	
+	def static <T> resolveValidatorParam(StandardValidator validator, Class<T> type) {
+		validator.params.filter(type).head
 	}
 	
 	def static Attribute getReferencedAttribute(PathDefinition pathDefinition) {
@@ -137,24 +201,24 @@ class MD2GeneratorUtil {
 	def static equals(PathDefinition p1, PathDefinition p2) {
 		if (p1 == p2) return true
 		if (p1 == null || p2 == null) return false
-		if (p1 instanceof ContentProviderPathDefinition && p2 instanceof ContentProviderPathDefinition) {
-			val contentProvider1 = (p1 as ContentProviderPathDefinition).contentProviderRef
-			val contentProvider2 = (p2 as ContentProviderPathDefinition).contentProviderRef
+		if (p1 instanceof ContentProviderPath && p2 instanceof ContentProviderPath) {
+			val contentProvider1 = (p1 as ContentProviderPath).contentProviderRef
+			val contentProvider2 = (p2 as ContentProviderPath).contentProviderRef
 			if (contentProvider1.type instanceof SimpleType || contentProvider2.type instanceof SimpleType) {
 				return contentProvider2.type == contentProvider2.type
 			}
 		}		
 		var ModelElement model1
 		var ModelElement model2
-		if (p1 instanceof EntityPathDefinition) {
-			model1 = (p1 as EntityPathDefinition).entityRef
-		} else if (p1 instanceof ContentProviderPathDefinition) {
-			model1 = ((p1 as ContentProviderPathDefinition).contentProviderRef.type as ReferencedModelType).entity
+		if (p1 instanceof EntityPath) {
+			model1 = (p1 as EntityPath).entityRef
+		} else if (p1 instanceof ContentProviderPath) {
+			model1 = ((p1 as ContentProviderPath).contentProviderRef.type as ReferencedModelType).entity
 		}
-		if (p2 instanceof EntityPathDefinition) {
-			model2 = (p2 as EntityPathDefinition).entityRef
-		} else if (p2 instanceof ContentProviderPathDefinition) {
-			model2 = ((p2 as ContentProviderPathDefinition).contentProviderRef.type as ReferencedModelType).entity
+		if (p2 instanceof EntityPath) {
+			model2 = (p2 as EntityPath).entityRef
+		} else if (p2 instanceof ContentProviderPath) {
+			model2 = ((p2 as ContentProviderPath).contentProviderRef.type as ReferencedModelType).entity
 		}
 		if (model1 != model2) return false
 		var tail1 = p1.tail
@@ -185,31 +249,26 @@ class MD2GeneratorUtil {
 		}
 		return result
 	}
-
+	
 	// Relies on simplified AbstractViewGUIElementRef from Preprocessing
-	def static ViewGUIElement resolveViewGUIElement(AbstractViewGUIElementRef abstractRef) {
-		if (abstractRef == null) return null
-		// @TODO Implement some checking and error handling
-		return abstractRef.ref as ViewGUIElement
-	}
-
-	def static ContainerElement resolveContainerElement(AbstractViewGUIElementRef abstractRef) {
-		if (abstractRef == null) return null
-		// @TODO Implement some checking and error handling
-		return abstractRef.ref as ContainerElement
-	}
-
-	def static ContainerElement resolveElementContainerElement(AbstractViewGUIElementRef abstractRef) {
-		if (abstractRef == null) return null
-		// @TODO Implement some checking and error handling
-		return abstractRef.ref as ContainerElement
+	def static resolveViewElement(AbstractViewGUIElementRef abstractRef) {
+		if (abstractRef == null) {
+			return null
+		}
+		if (abstractRef.ref == null) {
+			throw new Error("No view element bound to AbstractViewGUIElementRef!")
+		}
+		return abstractRef.ref as ViewElementType
 	}
 	
-	def static isCalledAtStartup(CustomCodeFragment codeFragment) {
-		if ((codeFragment.eContainer as CustomAction).name == PreprocessModel::autoGenerationActionName) return true		
-		val Action startupAction = codeFragment.eResource.allContents.filter(typeof(Main)).last.onInitializedEvent
-		if (startupAction == null) return false
-		return traverseAction(startupAction).filter(typeof(CustomAction)).exists(customAction | customAction.codeFragments.contains(codeFragment))
+	def static resolveContainerElement(AbstractViewGUIElementRef abstractRef) {
+		if (abstractRef == null) {
+			return null
+		}
+		if (abstractRef.ref == null) {
+			throw new Error("No view element bound to AbstractViewGUIElementRef!")
+		}
+		return abstractRef.ref as ContainerElement
 	}
 	
 	def static Iterable<Action> traverseAction(Action action) {
@@ -229,108 +288,16 @@ class MD2GeneratorUtil {
 		}.filter([it instanceof TabTitleParam]).head
 		if (param != null) (param as TabTitleParam).tabTitle else container.name.toFirstUpper
 	}
-	
-	def static String generateRemoteFilterString(WhereClauseCondition cond, (ViewGUIElement)=>String resolveFieldContentStrategy)
-	{
-		if (cond == null)
-			return null;
-		val StringBuilder str = new StringBuilder
-		var opsPosition = 0
-		
-		if(opsPosition < cond.ops.size && cond.ops.get(opsPosition).equals("not"))
-		{
-			str.append("not ")
-			opsPosition = opsPosition + 1
-		}
-		
-		for(subCondition : cond.subConditions)
-		{
-			// sub condition
-			switch (subCondition)
-			{
-				BooleanExpression: str.append(subCondition.value)
-				AttributeEqualsExpression: str.append(getPathTailAsString(subCondition.eqLeft.tail) + " " + subCondition.op.literal + " " + getSimpleExpression(subCondition.eqRight, resolveFieldContentStrategy))
-				default: str.append("(" + generateRemoteFilterString(subCondition, resolveFieldContentStrategy) + ")")
+
+	/**
+	 * Build and return the uri for the workflowWS
+	 */
+	def static getWorkflowWSUri(DataContainer container){
+		var uri = container.main.workflowManager.uri
+		if (!uri.endsWith("/")){
+			uri = uri + "/"	
 			}
-			str.append(" ")
-			
-			// operator
-			if(opsPosition < cond.ops.size)
-			{
-				str.append(cond.ops.get(opsPosition) + " ")
-				opsPosition = opsPosition + 1
-				
-				if(opsPosition < cond.ops.size && cond.ops.get(opsPosition).equals("not"))
-				{
-					str.append("not ")
-					opsPosition = opsPosition + 1
-				}
-			}
-		}
-		str.toString.trim
+		return uri
 	}
-	
-	def static generateLocalFilterString(WhereClauseCondition cond, (ViewGUIElement)=>String resolveFieldContentStrategy)
-	{
-		if (cond == null)
-			return null;
-		val StringBuilder str = new StringBuilder
-		var opsPosition = 0
-		
-		if(opsPosition < cond.ops.size && cond.ops.get(opsPosition).equals("!"))
-		{
-			str.append("! ")
-			opsPosition = opsPosition + 1
-		}
-		
-		for(subCondition : cond.subConditions)
-		{
-			// sub condition
-			switch (subCondition)
-			{
-				BooleanExpression: str.append(subCondition.value)
-				AttributeEqualsExpression:
-				{
-					val op = subCondition.op
-					var String opString
-					switch op
-					{
-						case Operator::EQUALS: opString = "="
-						case Operator::GREATER: opString = ">"
-						case Operator::SMALLER: opString = "<"
-						case Operator::GREATER_OR_EQUAL: opString = ">="
-						case Operator::SMALLER_OR_EQUAL: opString = "<="
-					}
-					str.append(getPathTailAsString(subCondition.eqLeft.tail) + opString + getSimpleExpression(subCondition.eqRight, resolveFieldContentStrategy))
-				}
-				default: str.append("(" + generateRemoteFilterString(subCondition, resolveFieldContentStrategy) + ")")
-			}
-			str.append(" ")
-			
-			// operator
-			if(opsPosition < cond.ops.size)
-			{
-				str.append(cond.ops.get(opsPosition) + " ")
-				opsPosition = opsPosition + 1
-				
-				if(opsPosition < cond.ops.size && cond.ops.get(opsPosition).equals("!"))
-				{
-					str.append("! ")
-					opsPosition = opsPosition + 1
-				}
-			}
-		}
-		str.toString.trim
-	}
-	
-	def private static getSimpleExpression(SimpleExpression expr, (ViewGUIElement)=>String resolveFieldContentStrategy)
-	{
-		switch expr
-		{
-			StringVal: "'" + expr.value + "'"
-			IntVal: expr.value.toString
-			FloatVal: expr.value.toString
-			AbstractViewGUIElementRef: resolveFieldContentStrategy.apply(resolveViewGUIElement(expr))
-		}
-	}
+
 }

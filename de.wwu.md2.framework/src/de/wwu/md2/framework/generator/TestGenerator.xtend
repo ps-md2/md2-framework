@@ -10,11 +10,10 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.Scanner
 import org.eclipse.emf.ecore.EObject
-import org.eclipse.emf.ecore.resource.ResourceSet
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl
 import org.eclipse.xtext.naming.IQualifiedNameProvider
 
-import static extension de.wwu.md2.framework.generator.util.PreprocessModel.*
+import static extension de.wwu.md2.framework.generator.preprocessor.util.Util.*
 
 /**
  * XMI model generator
@@ -25,24 +24,10 @@ class TestGenerator extends AbstractPlatformGenerator {
 	// Provides extension methods, e.g. getfullyQualifiedName for EObjects 
 	@Inject extension IQualifiedNameProvider nameProvider
 	
-	override doGenerate(ResourceSet input, IExtendedFileSystemAccess fsa) {
+	override doGenerate(IExtendedFileSystemAccess fsa) {
 		
-		super.doGenerate(input, fsa)
-		
-		
-		/////////////////////////////////////////
-		// Feasibility check
-		/////////////////////////////////////////
-		
-		// Check whether a main block has been defined. Otherwise do not run the generator.
-		if(dataContainer.main == null) {
-			System::out.println("Android: No main block found. Quit gracefully.")
-			return
-		}
-		
-		
-		for(view: dataContainer.views) {
-			fsa.generateFile(basePackageName + "/view.test", traverse(view))
+		for(view: dataContainer.view.viewElements) {
+			fsa.generateFile(rootFolder + "/view.test", traverse(view))
 		}
 		val modelsCopy = processedInput.copyModel
 		val xmiSet = new ResourceSetImpl()
@@ -62,7 +47,7 @@ class TestGenerator extends AbstractPlatformGenerator {
 			} finally{
 				scanner.close();
 			}
-			val relativeURI = basePackageName + "/" + xmiRes.URI.segment(xmiRes.URI.segmentCount-2) + "/" + xmiRes.URI.lastSegment
+			val relativeURI = rootFolder + "/" + xmiRes.URI.segment(xmiRes.URI.segmentCount-2) + "/" + xmiRes.URI.lastSegment
 			fsa.generateFile(relativeURI, text)
 		]	
 	}	
