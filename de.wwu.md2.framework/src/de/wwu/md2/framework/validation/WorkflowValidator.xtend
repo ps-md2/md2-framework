@@ -16,6 +16,7 @@ class WorkflowValidator extends AbstractMD2JavaValidator {
         // nothing to do
     }
     
+    public static final String INVOKEEVENTDESCMAYNOTBEEMPTY = "invokeEventDescMayNotBeEmpty"
     public static final String INVOKEHASTOBEINVOKEABLE = "invokeHasToBeInvokeable"
     public static final String INVOKEMAYNOTBEINVOKEABLE = "invokeMayNotBeInvokeable"
     
@@ -31,7 +32,7 @@ class WorkflowValidator extends AbstractMD2JavaValidator {
 		
 		if (wfeEntry.eventDesc == ""){
 			val error = '''An empty string as event description for invoking the workflow element is not allowed.'''
-			acceptError(error, wfeEntry, MD2Package.eINSTANCE.workflowElementEntry_EventDesc , -1, null);
+			acceptError(error, wfeEntry, MD2Package.eINSTANCE.workflowElementEntry_EventDesc , -1, INVOKEEVENTDESCMAYNOTBEEMPTY);
 		}
 	}
 	
