@@ -1,0 +1,17 @@
+package ValidatorTest.models
+
+entity Entity {
+	status : Status
+	testString1: string(optional)
+	testString2: string(optional)
+}
+
+entity Entity2 {
+	testString1: string(optional)
+	testString2: string(optional)
+}
+
+enum Status {
+	"TextA",
+	"TextB"
+}

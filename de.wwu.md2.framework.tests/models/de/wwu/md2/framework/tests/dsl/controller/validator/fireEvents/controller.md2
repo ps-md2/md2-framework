@@ -1,0 +1,58 @@
+package ValidatorTest.controllers
+
+main {
+	appVersion "1.0"
+	modelVersion "1.0"
+	workflowManager WorkflowBackendConnection
+	defaultConnection ValidatorTestRemoteConnection
+}
+
+remoteConnection WorkflowBackendConnection{
+	uri "http://localhost:8080/ValidatorTest.backend/service/"
+}
+
+remoteConnection ValidatorTestRemoteConnection {
+	uri "http://localhost:8080/ValidatorTest.backend/service/"
+}
+
+remoteConnection AdministrativeAppRemoteConnection{
+	uri "http://...."
+	user "adminapp"
+	password "Qwertz123"
+	key "5678"
+}
+
+contentProvider Entity EntityProvider {
+	providerType ValidatorTestRemoteConnection     
+}
+
+contentProvider Entity2 Entity2Provider {
+	providerType ValidatorTestRemoteConnection     
+}
+
+WorkflowElement WorkFlowElement1{
+	defaultProcessChain firstProcessChain
+	onInit {
+		init
+	}
+	
+	action CustomAction init{
+		
+	}
+	
+	action CustomAction saveAction{
+		call ContentProviderOperation (save :EntityProvider)
+		call FireEvent(SubmitEvent)
+		call DisplayMessage ("Complaint submitted!")
+	}
+	
+	action CustomAction next{
+		call FireEvent(Event)
+		call FireEvent(Submit)
+	}
+	
+	processChain  firstProcessChain {
+		step firstStep:
+			view firstView
+	}
+}

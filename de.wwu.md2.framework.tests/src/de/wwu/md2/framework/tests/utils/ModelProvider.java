@@ -69,6 +69,10 @@ public class ModelProvider {
 	
 	public static final String FILTER_MULTIPLIZITY_C = "dsl/controller/contentProvider/validator/FilterMultiplizity.md2";
 	
+	public static final String FIRE_EVENT_VAL_C = "dsl/controller/validator/fireEvents/controller.md2";
+	public static final String FIRE_EVENT_VAL_M = "dsl/controller/validator/fireEvents/model.md2";
+	public static final String FIRE_EVENT_VAL_V = "dsl/controller/validator/fireEvents/view.md2";
+	
 	// Model Validators
 	
 	public static final String MODEL_VALIDATOR_LOWERCASE_ATTRIBUTE = "dsl/model/validator/LowercaseAttribute.md2";
