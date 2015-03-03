@@ -356,20 +356,21 @@ class ControllerValidator extends AbstractMD2JavaValidator {
 	 */
 	@Check
 	def checkForOnlyOneFireEventActionPerCustomAction (CustomAction caction) {
-		if (caction.codeFragments.map[it.eAllContents.filter(FireEventAction).toSet].flatten.toList.size>1){
+		val callTasks = caction.codeFragments.filter(CallTask)
+		if (callTasks.map[it.eAllContents.filter(FireEventAction).toSet].flatten.toList.size>1){
 			warning("Multiple FireEventActions are not supported, probably only the first one will be executed.", caction, null, -1, MULTIPLEFIREEVENTS);
 		}
 	}
 	
 	
 	/**
-	 * Checks for Actions after a FireEventAction and throws a warning 
+	 * Checks for Actions after the last FireEventAction and throws a warning 
 	 * for this not recommended behavior.
 	 *
 	 * @param CustomAction
 	 */
 	@Check
-	def checkNoSavingAfterFireEvent(CustomAction caction){
+	def checkNoActionsAfterFireEvent(CustomAction caction){
 		val callTasks = caction.codeFragments.filter(CallTask)
 		val fireevents = callTasks.map[it.eAllContents.filter(FireEventAction).toSet].flatten.toList		
 		val lastFireEvent = (fireevents.last as FireEventAction)
