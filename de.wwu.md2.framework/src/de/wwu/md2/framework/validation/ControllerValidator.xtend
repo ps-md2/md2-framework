@@ -31,7 +31,6 @@ import de.wwu.md2.framework.mD2.SimpleActionRef
 import de.wwu.md2.framework.mD2.FireEventAction
 import de.wwu.md2.framework.mD2.Label
 import de.wwu.md2.framework.mD2.AbstractViewGUIElementRef
-import javax.swing.text.DefaultEditorKit.CutAction
 
 /**
  * Valaidators for all controller elements of MD2.
@@ -356,7 +355,7 @@ class ControllerValidator extends AbstractMD2JavaValidator {
 	 */
 	@Check
 	def checkForOnlyOneFireEventActionPerCustomAction (CustomAction caction) {
-		val callTasks = caction.codeFragments.filter(CallTask)
+		val callTasks = caction.codeFragments.map[it.eAllContents.filter(CallTask).toSet].flatten.toList
 		if (callTasks.map[it.eAllContents.filter(FireEventAction).toSet].flatten.toList.size>1){
 			warning("Multiple FireEventActions are not supported, probably only the first one will be executed.", caction, null, -1, MULTIPLEFIREEVENTS);
 		}
@@ -371,14 +370,16 @@ class ControllerValidator extends AbstractMD2JavaValidator {
 	 */
 	@Check
 	def checkNoActionsAfterFireEvent(CustomAction caction){
-		val callTasks = caction.codeFragments.filter(CallTask)
+		val callTasks = caction.codeFragments.map[it.eAllContents.filter(CallTask).toSet].flatten.toList
 		val fireevents = callTasks.map[it.eAllContents.filter(FireEventAction).toSet].flatten.toList		
 		val lastFireEvent = (fireevents.last as FireEventAction)
-		// TODO: PROBLEM WITH "NESTED" CALLS (E.G. IF(){CALL FIREEVENT()})
-		val lastFireEventPosition = caction.codeFragments.indexOf((lastFireEvent.eContainer as SimpleActionRef).eContainer as CallTask) ;
-		// Check if position of last FireEventAction is the last CodeFragment within the CustomAction, if not throw a warning
-		if (lastFireEventPosition < caction.codeFragments.size-1){
-			warning("There are actions defined after the FireEventAction call. Please be sure that this is wanted.", lastFireEvent, null, -1, SAVEBEFOREFIREEVENT);
+		// TODO: PROBLEM WITH "NESTED" CALLS (E.G. IF(){CALL FIREEVENT()}); indexOf needs to be fixed, so that a the position of the corresponding codeFragment is given...
+		if (!(lastFireEvent==null)){
+			val lastFireEventPosition = caction.codeFragments.indexOf((lastFireEvent.eContainer as SimpleActionRef).eContainer as CallTask) ;
+			// Check if position of last FireEventAction is the last CodeFragment within the CustomAction, if not throw a warning
+			if (lastFireEventPosition < caction.codeFragments.size-1){
+				warning("There are actions defined after the FireEventAction call. Please be sure that this is wanted.", lastFireEvent, null, -1, SAVEBEFOREFIREEVENT);
+			}
 		}
 	}
 }
