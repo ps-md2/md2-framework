@@ -3,6 +3,7 @@
 */
 package de.wwu.md2.framework.ui.labeling;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.eclipse.emf.edit.ui.provider.AdapterFactoryLabelProvider;
@@ -30,7 +31,7 @@ public class MD2LabelProvider extends DefaultEObjectLabelProvider {
 		try {
 			getNameMethod = ele.getClass().getMethod("getName");
 			return (String) getNameMethod.invoke(ele) + " <"+ele.getClass().getInterfaces()[0].getSimpleName()+">";
-		} catch (Exception e1) {
+		} catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e1) {
 			return "<"+ele.getClass().getInterfaces()[0].getSimpleName()+">";
 		}
 	}
